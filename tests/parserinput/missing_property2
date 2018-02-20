@@ -1,0 +1,4 @@
+foo 4
+bar:
+# comment
+baz false

@@ -1,0 +1,8 @@
+bool_t true
+bool_f false
+unset null
+int 42
+float 13.37
+string "string string"
+string_t "true"
+other 12.13.14

@@ -1,0 +1,4 @@
+foo:
+  bar true
+foobar:
+   baz false

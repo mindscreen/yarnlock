@@ -1,0 +1,9 @@
+# comment
+foo 4
+bar:
+  # comment
+  foo false
+ #comment
+  baz null
+# comment
+baz true
