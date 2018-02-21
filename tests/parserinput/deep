@@ -1,0 +1,21 @@
+p1@^1.0, p1@^1.0.1:
+    version 1.0.3
+    resolved "p1"
+    dependencies:
+        p2 "^0.9"
+        p3 "^0.8"
+
+p4@^0.0.1:
+    version 0.1.0
+    resolved "p4"
+
+p2@^0.9:
+    version 1.0.0
+    resolved "p2"
+    dependencies:
+        p3 "^0.8.3"
+        p4 "^0.0.1"
+
+p3@^0.8, p3@^0.8.3:
+    version 0.8.4
+    resolved "p3"

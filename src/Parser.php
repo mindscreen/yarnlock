@@ -147,4 +147,44 @@ class Parser
         }
         return $object;
     }
+
+    /**
+     * If parts of keys contain spaces, they are surrounded with quotes,
+     * e.g. `minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"`, which would
+     * fail when simply splitting on spaces.
+     * @param string $key
+     * @return string[]
+     */
+    public static function parseVersionStrings($key)
+    {
+        $result = [];
+        if (strpos($key, '"') === false) {
+            $result = explode(',', $key);
+        } else {
+            $currentKey = '';
+            $isString = false;
+            for ($i = 0; $i < strlen($key); $i++) {
+                if ($key[$i] == '"') {
+                    if (!$isString) {
+                        $isString = true;
+                        continue;
+                    } else {
+                        $isString = false;
+                        continue;
+                    }
+                }
+                if (!$isString && $key[$i] == ',') {
+                    $result[] = $currentKey;
+                    $currentKey = '';
+                    continue;
+                }
+                $currentKey .= $key[$i];
+            }
+            if (!empty($currentKey)) {
+                $result[] = $currentKey;
+            }
+        }
+        $result = array_map(function($e) { return trim($e); }, $result);
+        return $result;
+    }
 }

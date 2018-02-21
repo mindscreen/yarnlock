@@ -204,4 +204,27 @@ class ParserTest extends TestCase
         $this->assertEquals(true, is_array($package3_dependencies));
         $this->assertEquals(1, count($package3_dependencies));
     }
+
+    public function testParseVersionStrings()
+    {
+        $input = 'minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"';
+        $versionStrings = Parser::parseVersionStrings($input);
+        $this->assertEquals(['minimatch@^3.0.0', 'minimatch@^3.0.2', 'minimatch@2 || 3'], $versionStrings);
+
+        $input = 'babel-types@^6.10.2, babel-types@^6.14.0, babel-types@^6.15.0';
+        $versionStrings = Parser::parseVersionStrings($input);
+        $this->assertEquals(['babel-types@^6.10.2', 'babel-types@^6.14.0', 'babel-types@^6.15.0'], $versionStrings);
+
+        $input = 'array-uniq@^1.0.1';
+        $versionStrings = Parser::parseVersionStrings($input);
+        $this->assertEquals(['array-uniq@^1.0.1'], $versionStrings);
+
+        $input = '"cssom@>= 0.3.0 < 0.4.0", cssom@0.3.x';
+        $versionStrings = Parser::parseVersionStrings($input);
+        $this->assertEquals(['cssom@>= 0.3.0 < 0.4.0', 'cssom@0.3.x'], $versionStrings);
+
+        $input = '"graceful-readlink@>= 1.0.0"';
+        $versionStrings = Parser::parseVersionStrings($input);
+        $this->assertEquals(['graceful-readlink@>= 1.0.0'], $versionStrings);
+    }
 }
