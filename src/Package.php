@@ -229,7 +229,7 @@ class Package
         if (in_array($package, $this->$field)) {
             return;
         }
-        ($this->$field)[] = $package;
+        array_push($this->$field, $package);
         $package->addResolves($this);
     }
 
