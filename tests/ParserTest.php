@@ -205,6 +205,21 @@ class ParserTest extends TestCase
         $this->assertEquals(1, count($package3_dependencies));
     }
 
+    /**
+     * Single-value keys should not be split at spaces if they are surrounded with quotes
+     * @throws ParserException
+     */
+    public function testQuotedKeys()
+    {
+        $fileContents = file_get_contents('tests/parserinput/quoted-key');
+        $result = $this->parser->parse($fileContents, true);
+        $data = $result['test'];
+        foreach (['foo', 'bar', 'foo bar', 'foobar'] as $item) {
+            $this->assertArrayHasKey($item, $data);
+            $this->assertEquals($item, $data[$item]);
+        }
+    }
+
     public function testParseVersionStrings()
     {
         $input = 'minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"';

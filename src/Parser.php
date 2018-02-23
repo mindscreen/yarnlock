@@ -84,12 +84,25 @@ class Parser
                 $requireKey = true;
             } else {
                 $requireKey = false;
-                $value = explode(' ', $line, 2);
-                $currentKey = $value[0];
-                if (count($value) === 1) {
-                    throw new ParserException('Expecting value at line ' . $l, 1519141916);
+                if ($line[0] === '"') {
+                    $currentKey = '';
+                    for ($j = 1; $j < strlen($line); $j++) {
+                        if ($line[$j] === '"') {
+                            $j++;
+                            break;
+                        }
+                        $currentKey .= $line[$j];
+                    }
+                    $value = substr($line, $j);
+                } else {
+                    $parts = explode(' ', $line, 2);
+                    $currentKey = $parts[0];
+                    if (count($parts) === 1) {
+                        throw new ParserException('Expecting value at line ' . $l, 1519141916);
+                    }
+                    $value = $parts[1];
                 }
-                $current->$currentKey = self::parseValue($value[1]);
+                $current->$currentKey = self::parseValue(ltrim($value));
             }
         }
         if ($requireKey) {
