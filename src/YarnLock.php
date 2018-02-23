@@ -44,7 +44,7 @@ class YarnLock
         $allPackages = [];
         foreach (get_object_vars($data) as $packageVersions => $dependencyInformation) {
             $packageVersionStrings = Parser::parseVersionStrings($packageVersions);
-            $packageName = explode('@', $packageVersionStrings[0])[0];
+            $packageName = Parser::splitVersionString($packageVersionStrings[0])[0];
             $packageVersion = $dependencyInformation->version;
             if (!array_key_exists($packageName, $packageVersionMap)) {
                 $packageVersionMap[$packageName] = [];
@@ -54,7 +54,7 @@ class YarnLock
             $package->setVersion($packageVersion);
             $package->setResolved($dependencyInformation->resolved);
             foreach ($packageVersionStrings as &$packageVersionString) {
-                $packageVersionString = explode('@', $packageVersionString)[1];
+                $packageVersionString = Parser::splitVersionString($packageVersionString)[1];
                 $package->addVersion($packageVersionString);
                 $packageVersionMap[$packageName][$packageVersionString] = [
                     'package' => $package,

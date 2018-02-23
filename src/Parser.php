@@ -200,4 +200,21 @@ class Parser
         $result = array_map(function($e) { return trim($e); }, $result);
         return $result;
     }
+
+    /**
+     * To avoid splitting on scoped package-names, every but the last @ are considered
+     * package name.
+     *
+     * @param string $versionString
+     * @return string[]
+     */
+    public static function splitVersionString($versionString)
+    {
+         $parts = explode('@', $versionString);
+         $version = array_pop($parts);
+         return [
+             implode('@', $parts),
+             $version
+         ];
+    }
 }

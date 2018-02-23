@@ -206,6 +206,22 @@ class ParserTest extends TestCase
     }
 
     /**
+     * Scoped packages names should not be split at the first '@'
+     */
+    public function testVersionSplitting()
+    {
+        $this->assertEquals(
+            ['gulp-sourcemaps', '2.6.4'],
+            Parser::splitVersionString('gulp-sourcemaps@2.6.4')
+        );
+
+        $this->assertEquals(
+            ['@gulp-sourcemaps/identity-map', '1.X'],
+            Parser::splitVersionString('@gulp-sourcemaps/identity-map@1.X')
+        );
+    }
+
+    /**
      * Single-value keys should not be split at spaces if they are surrounded with quotes
      * @throws ParserException
      */
