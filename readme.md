@@ -6,9 +6,10 @@
 A php-package for parsing and evaluating the [yarn.lock](https://yarnpkg.com/lang/en/docs/yarn-lock/) format.
 
 ## Basic Usage
+
 ```php
 <?php
-use Mindscreen\YarnLock;
+use Mindscreen\YarnLock\YarnLock;
 
 $yarnLock = YarnLock::fromString(file_get_contents('yarn.lock'));
 
@@ -19,10 +20,13 @@ $babelCoreDependencies = $babelCorePackages[0]->getDependencies();
 ```
 
 ## Package Depth
+
 If you maybe don't just want all packages but only the direct dependencies plus one level of indirection, you have to go a little extra mile:
+
 ```php
 <?php
-use Mindscreen\YarnLock;
+use Mindscreen\YarnLock\YarnLock;
+
 // read the dependencies from the package.json file
 $packageDependencies = (json_decode(file_get_contents('package.json')))->dependencies;
 // get these packages from the yarn lock-file
