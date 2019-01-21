@@ -133,6 +133,7 @@ class YarnLock
      */
     public function getPackagesByDepth($start, $end = 0)
     {
+        $this->calculateDepth();
         if ($end === 0 || ($end !== null && $end < $start)) {
             $end = $start + 1;
         }
