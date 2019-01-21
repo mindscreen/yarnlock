@@ -59,7 +59,7 @@ class Package
      *
      * @var Package[]
      */
-    protected $resolves;
+    protected $resolves = [];
 
     /**
      * Depth in the dependency tree. Only initialized once the YarnLock computes
@@ -208,9 +208,6 @@ class Package
      */
     public function addResolves(Package $package)
     {
-        if ($this->resolves === null) {
-            $this->resolves = [];
-        }
         if (in_array($package, $this->resolves)) {
             return;
         }
