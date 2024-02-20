@@ -1,22 +1,79 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Mindscreen\YarnLock;
 
-class Package
+use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\Deprecated;
+
+class Package implements \Stringable
 {
-    const DEPENDENCY_TYPE_DEFAULT = '';
-    const DEPENDENCY_TYPE_DEV = 'dev';
-    const DEPENDENCY_TYPE_OPTIONAL = 'optional';
-    const DEPENDENCY_TYPE_PEER = 'peer';
+
+    protected string $name = '';
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): static
+    {
+        $this->name = $name;
+
+        return $this;
+    }
+
+    protected string $version = '';
+
+    public function getVersion(): string
+    {
+        return $this->version;
+    }
+
+    public function setVersion(string $version): static
+    {
+        $this->version = $version;
+
+        return $this;
+    }
 
     /**
-     * @var string
+     * The distribution resolved for this package.
      */
-    protected $name;
+    protected string $resolved = '';
+
+    public function getResolved(): string
+    {
+        return $this->resolved;
+    }
+
+    public function setResolved(string $resolved): static
+    {
+        $this->resolved = $resolved;
+
+        return $this;
+    }
 
     /**
-     * @var string
+     * Depth in the dependency tree.
+     *
+     * Only initialized once the YarnLock computes the depth of all contained
+     * packages.
      */
-    protected $version;
+    protected ?int $depth = null;
+
+    public function getDepth(): ?int
+    {
+        return $this->depth;
+    }
+
+    public function setDepth(?int $depth): static
+    {
+        $this->depth = $depth;
+
+        return $this;
+    }
 
     /**
      * Array of version strings satisfied by this package,
@@ -24,244 +81,180 @@ class Package
      *
      * @var string[]
      */
-    protected $satisfies = [];
-
-    /**
-     * @var Package[]
-     */
-    protected $dependencies = [];
-
-    /**
-     * @var Package[]
-     */
-    protected $devDependencies = [];
-
-    /**
-     * @var Package[]
-     */
-    protected $peerDependencies = [];
-
-    /**
-     * @var Package[]
-     */
-    protected $optionalDependencies = [];
-
-    /**
-     * The distribution resolved for this package.
-     *
-     * @var string
-     */
-    protected $resolved;
-
-    /**
-     * Packages that require this package, i.e. packages who's dependencies are
-     * (in part) resolved by this one.
-     *
-     * @var Package[]
-     */
-    protected $resolves = [];
-
-    /**
-     * Depth in the dependency tree. Only initialized once the YarnLock computes
-     * the depth of all contained packages.
-     *
-     * @var int
-     */
-    protected $depth = null;
-
-    /**
-     * @return string
-     */
-    public function getName()
-    {
-        return $this->name;
-    }
-
-    /**
-     * @param string $name
-     */
-    public function setName($name)
-    {
-        $this->name = $name;
-    }
-
-    /**
-     * @return string
-     */
-    public function getVersion()
-    {
-        return $this->version;
-    }
-
-    /**
-     * @param string $version
-     */
-    public function setVersion($version)
-    {
-        $this->version = $version;
-    }
-
-    /**
-     * @return string
-     */
-    public function getResolved()
-    {
-        return $this->resolved;
-    }
-
-    /**
-     * @param string $resolved
-     */
-    public function setResolved($resolved)
-    {
-        $this->resolved = $resolved;
-    }
-
-    /**
-     * @return int|null
-     */
-    public function getDepth()
-    {
-        return $this->depth;
-    }
-
-    /**
-     * @param int $depth
-     */
-    public function setDepth($depth)
-    {
-        $this->depth = $depth;
-    }
-
-    /**
-     * @param string $versionString
-     */
-    public function addVersion($versionString)
-    {
-        array_push($this->satisfies, $versionString);
-    }
+    protected array $satisfies = [];
 
     /**
      * @return string[]
      */
-    public function getSatisfiedVersions()
+    public function getSatisfiedVersions(): array
     {
         return $this->satisfies;
     }
 
     /**
-     * @return Package[]
+     * @deprecated
+     *
+     * @see addSatisfiedVersion()
      */
-    public function getDependencies()
+    public function addVersion(string $versionString): static
     {
-        return $this->dependencies;
+        return $this->addSatisfiedVersion($versionString);
+    }
+
+    public function addSatisfiedVersion(string $versionString): static
+    {
+        $this->satisfies[] = $versionString;
+
+        return $this;
     }
 
     /**
-     * @return Package[]
+     * @phpstan-var array<string, array<\Mindscreen\YarnLock\Package>>
      */
-    public function getDevDependencies()
+    #[ArrayShape([
+        'dependencies' => '\Mindscreen\YarnLock\Package[]',
+        'optionalDependencies' => '\Mindscreen\YarnLock\Package[]',
+        'devDependencies' => '\Mindscreen\YarnLock\Package[]',
+        'peerDependencies' => '\Mindscreen\YarnLock\Package[]',
+    ])]
+    protected array $dependencies = [
+        DependencyType::ProdRequired->value => [],
+        DependencyType::ProdOptional->value => [],
+        DependencyType::DevRequired->value => [],
+        DependencyType::PeerRequired->value => [],
+    ];
+
+    /**
+     * @return \Mindscreen\YarnLock\Package[]
+     *
+     * @see getProdRequiredDependencies()
+     */
+    #[Deprecated(
+        reason: 'Ambiguous name',
+        replacement: '%class%::getProdRequiredDependencies()',
+    )]
+    public function getDependencies(): array
     {
-        return $this->devDependencies;
+        return $this->getProdRequiredDependencies();
     }
 
     /**
-     * @return Package[]
+     * @return \Mindscreen\YarnLock\Package[]
      */
-    public function getPeerDependencies()
+    public function getProdRequiredDependencies(): array
     {
-        return $this->peerDependencies;
+        return $this->dependencies[DependencyType::ProdRequired->value];
     }
 
     /**
-     * @return Package[]
+     * @return \Mindscreen\YarnLock\Package[]
      */
-    public function getOptionalDependencies()
+    #[Deprecated(
+        reason: 'Inconsistent naming.',
+        replacement: '%class%::getProdOptionalDependencies',
+    )]
+    public function getOptionalDependencies(): array
     {
-        return $this->optionalDependencies;
+        return $this->dependencies[DependencyType::ProdOptional->value];
     }
 
     /**
-     * @return Package[]
+     * @return \Mindscreen\YarnLock\Package[]
      */
-    public function getAllDependencies()
+    public function getProdOptionalDependencies(): array
+    {
+        return $this->dependencies[DependencyType::ProdOptional->value];
+    }
+
+    /**
+     * @return \Mindscreen\YarnLock\Package[]
+     */
+    public function getDevRequiredDependencies(): array
+    {
+        return $this->dependencies[DependencyType::DevRequired->value];
+    }
+
+    /**
+     * @return \Mindscreen\YarnLock\Package[]
+     */
+    public function getPeerRequiredDependencies(): array
+    {
+        return $this->dependencies[DependencyType::PeerRequired->value];
+    }
+
+    /**
+     * @return \Mindscreen\YarnLock\Package[]
+     */
+    public function getAllDependencies(): array
     {
         return array_merge(
-            $this->getDependencies(),
-            $this->getDevDependencies(),
-            $this->getOptionalDependencies(),
-            $this->getPeerDependencies()
+            $this->getProdRequiredDependencies(),
+            $this->getProdOptionalDependencies(),
+            $this->getPeerRequiredDependencies(),
+            $this->getDevRequiredDependencies(),
         );
     }
 
     /**
-     * @return Package[]
+     * @return \Mindscreen\YarnLock\Package[]
      */
-    public function getResolves()
+    public function getDependenciesByType(DependencyType $type): array
+    {
+        return match ($type) {
+            DependencyType::ProdRequired => $this->getProdRequiredDependencies(),
+            DependencyType::ProdOptional => $this->getProdOptionalDependencies(),
+            DependencyType::DevRequired => $this->getDevRequiredDependencies(),
+            DependencyType::PeerRequired => $this->getPeerRequiredDependencies(),
+        };
+    }
+
+    /**
+     * Packages that require this package, i.e. packages who's dependencies are
+     * (in part) resolved by this one.
+     *
+     * @var \Mindscreen\YarnLock\Package[]
+     */
+    protected array $resolves = [];
+
+    /**
+     * @return \Mindscreen\YarnLock\Package[]
+     */
+    public function getResolves(): array
     {
         return $this->resolves;
     }
 
     /**
-     * @param Package $package
      * @internal
      */
-    public function addResolves(Package $package)
+    public function addResolves(Package $package): static
     {
-        if ($this->resolves === null) {
-            $this->resolves = [];
+        if (!in_array($package, $this->resolves)) {
+            $this->resolves[] = $package;
         }
-        if (in_array($package, $this->resolves)) {
-            return;
-        }
-        $this->resolves[] = $package;
+
+        return $this;
     }
 
     /**
      * Add a package as dependency to the current one.
-     *
-     * @param Package $package
-     * @param string $type
      */
-    public function addDependency(Package $package, $type = self::DEPENDENCY_TYPE_DEFAULT)
+    public function addDependency(Package $package, DependencyType $type = DependencyType::ProdRequired): static
     {
-        $field = self::getDependencyField($type);
-        if (in_array($package, $this->$field)) {
-            return;
+        if (in_array($package, $this->dependencies[$type->value])) {
+            return $this;
         }
-        array_push($this->$field, $package);
-        $package->addResolves($this);
-    }
 
-    /**
-     * Get the property-name and yarn-lock key for the given dependency-type.
-     *
-     * @param string $type
-     * @return string
-     */
-    public static function getDependencyField($type)
-    {
-        $field = 'dependencies';
-        switch ($type) {
-            case self::DEPENDENCY_TYPE_DEV:
-                $field = 'devDependencies';
-                break;
-            case self::DEPENDENCY_TYPE_OPTIONAL:
-                $field = 'optionalDependencies';
-                break;
-            case self::DEPENDENCY_TYPE_PEER:
-                $field = 'peerDependencies';
-                break;
-        }
-        return $field;
+        $this->dependencies[$type->value][] = $package;
+        $package->addResolves($this);
+
+        return $this;
     }
 
     /**
      * Printing a package should contain it's name and version.
-     *
-     * @return string
      */
-    public function __toString()
+    public function __toString(): string
     {
         return $this->getName() . '@' . $this->getVersion();
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Mindscreen\YarnLock;
 
 class Parser
@@ -8,16 +10,13 @@ class Parser
     /**
      * Parse the yarn.lock format @link{https://yarnpkg.com/lang/en/docs/yarn-lock/} into either an object or an
      * associative array
-     * @param string $input
-     * @param bool $assoc
-     * @return array|\stdClass
-     * @throws ParserException
+     *
+     * @return array<string, mixed>|\stdClass
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function parse($input, $assoc = false)
+    public function parse(string $input, bool $assoc = false): array|\stdClass
     {
-        if (!is_string($input)) {
-            throw new \InvalidArgumentException('Parser input is expected to be a string.', 1519142104);
-        }
         $data = new \stdClass();
         $current = $data;
         $lines = explode("\n", $input);
@@ -25,64 +24,81 @@ class Parser
         $indentationDepth = null;
         $indentationLevel = 0;
         $requireKey = false;
-        foreach ($lines as $l => $line) {
-            $l++;
+        foreach ($lines as $lineIndex => $line) {
+            $lineNumber = $lineIndex + 1;
             $line = rtrim($line);
-            if (empty($line)) {
+
+            if ($line === '') {
                 continue;
             }
+
             if ($indentationCharacter === null && ctype_space($line[0])) {
                 $indentationCharacter = $line[0];
             }
-            for ($i = 0; $i < strlen($line); $i++) {
-                if (ctype_space($line[$i])) {
-                    if ($line[$i] !== $indentationCharacter) {
-                        throw new ParserException(sprintf('Mixed indentation characters at line %s', $l), 1519140104);
-                    }
-                } else {
-                    if ($i > 0) {
-                        $line = substr($line, $i);
-                        if ($line[0] === '#') {
-                            // comment
-                            break;
-                        }
-                        if ($indentationDepth === null) {
-                            $indentationDepth = $i;
-                        } else {
-                            if ($i % $indentationDepth !== 0) {
-                                throw new ParserException(
-                                    sprintf('Indentation depth is not constant at line %s', $l),
-                                    1519140379
-                                );
-                            }
 
-                            if ($i / $indentationDepth > $indentationLevel) {
-                                throw new ParserException(
-                                    sprintf('Unexpected indentation at line %s', $l),
-                                    1519140493
-                                );
-                            }
-                        }
-                        $newIndentationLevel = $i / $indentationDepth;
-                    } else {
-                        $newIndentationLevel = 0;
+            for ($charIndex = 0; $charIndex < strlen($line); $charIndex++) {
+                $char = substr($line, $charIndex, 1);
+                if (ctype_space($char)) {
+                    if ($char !== $indentationCharacter) {
+                        throw new ParserException(
+                            sprintf('Mixed indentation characters at line %s', $lineNumber),
+                            ParserErrorCode::MixedIndentStyle->value,
+                        );
                     }
-                    if ($newIndentationLevel < $indentationLevel) {
-                        if ($requireKey) {
-                            throw new ParserException('Expecting property at line ' . $l, 1519142311);
-                        }
-                        for ($j = $indentationLevel; $j > $newIndentationLevel; $j--) {
-                            $current = $current->__parent;
-                        }
-                    }
-                    $indentationLevel = $newIndentationLevel;
-                    break;
+
+                    continue;
                 }
+
+                if ($charIndex > 0) {
+                    $line = substr($line, $charIndex);
+                    if ($line[0] === '#') {
+                        // comment
+                        break;
+                    }
+
+                    if ($indentationDepth === null) {
+                        $indentationDepth = $charIndex;
+                    } else {
+                        if ($charIndex % $indentationDepth !== 0) {
+                            throw new ParserException(
+                                sprintf('Indentation depth is not constant at line %s', $lineNumber),
+                                ParserErrorCode::MixedIndentSize->value,
+                            );
+                        }
+
+                        if ($charIndex / $indentationDepth > $indentationLevel) {
+                            throw new ParserException(
+                                sprintf('Unexpected indentation at line %s', $lineNumber),
+                                ParserErrorCode::UnexpectedIndentation->value,
+                            );
+                        }
+                    }
+                    $newIndentationLevel = $charIndex / $indentationDepth;
+                } else {
+                    $newIndentationLevel = 0;
+                }
+
+                if ($newIndentationLevel < $indentationLevel) {
+                    if ($requireKey) {
+                        throw new ParserException(
+                            sprintf('Expecting property at line %d', $lineNumber),
+                            ParserErrorCode::MissingProperty->value,
+                        );
+                    }
+
+                    for ($j = $indentationLevel; $j > $newIndentationLevel; $j--) {
+                        $current = $current->__parent;
+                    }
+                }
+                $indentationLevel = $newIndentationLevel;
+                break;
             }
-            if ($line[0] === '#') {
+
+            if (substr($line, 0, 1) === '#') {
                 continue;
             }
-            if ($line[strlen($line) - 1] == ':') {
+
+            if (str_ends_with($line, ':')) {
                 $indentationLevel += 1;
                 $currentKey = substr($line, 0, -1);
                 $current->$currentKey = new \stdClass();
@@ -105,66 +121,89 @@ class Parser
                     $parts = explode(' ', $line, 2);
                     $currentKey = $parts[0];
                     if (count($parts) === 1) {
-                        throw new ParserException('Expecting value at line ' . $l, 1519141916);
+                        throw new ParserException(
+                            sprintf('Expecting value at line %d', $lineNumber),
+                            ParserErrorCode::MissingValue->value,
+                        );
                     }
                     $value = $parts[1];
                 }
-                $current->$currentKey = self::parseValue(ltrim($value));
+                $current->$currentKey = static::parseValue(ltrim($value));
             }
         }
         if ($requireKey) {
-            throw new ParserException('Unexpected EOF, expecting property', 1519142311);
+            throw new ParserException(
+                'Unexpected EOF, expecting property',
+                ParserErrorCode::UnexpectedEof->value,
+            );
         }
-        self::cleanupObject($data);
+
+        static::cleanupObject($data);
         if ($assoc) {
-            return self::convertObjectToArray($data);
+            return static::convertObjectToArray($data);
         }
+
         return $data;
     }
 
-    protected static function parseValue($input)
+    protected static function parseValue(string $input): mixed
     {
         if ($input === 'true') {
             return true;
         }
+
         if ($input === 'false') {
             return false;
         }
+
         if ($input === 'null') {
             return null;
         }
-        if ($input[0] === '"' && $input[strlen($input) - 1] === '"') {
+
+        if (str_starts_with($input, '"')
+            && str_ends_with($input, '"')
+        ) {
             return substr($input, 1, -1);
         }
+
         if (($value = filter_var($input, FILTER_VALIDATE_INT)) !== false) {
             return $value;
         }
+
         if (($value = filter_var($input, FILTER_VALIDATE_FLOAT)) !== false) {
             return $value;
         }
+
         return $input;
     }
 
-    protected static function cleanupObject(&$object)
+    protected static function cleanupObject(object $object): void
     {
         unset($object->__parent);
-        foreach (get_object_vars($object) as $key => $value) {
+        foreach (get_object_vars($object) as $value) {
             if ($value instanceof \stdClass) {
-                self::cleanupObject($value);
+                static::cleanupObject($value);
             }
         }
     }
 
-    protected static function convertObjectToArray($object)
+    /**
+     * @param array<mixed>|object $object
+     *
+     * @return array<mixed>
+     */
+    protected static function convertObjectToArray(array|object $object): array
     {
         if (is_object($object)) {
-            $object = (array)$object;
+            $object = (array) $object;
         }
+
         foreach ($object as $key => $value) {
             if (is_array($value) || is_object($value)) {
-                $object[$key] = self::convertObjectToArray($value);
+                $object[$key] = static::convertObjectToArray($value);
             }
         }
+
         return $object;
     }
 
@@ -173,63 +212,34 @@ class Parser
      * e.g. `minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"`, which would
      * fail when simply splitting on spaces.
      *
-     * @param string $key
-     *
      * @return string[]
      */
-    public static function parseVersionStrings($key)
+    public static function parseVersionStrings(string $key): array
     {
-        $result = [];
-        if (strpos($key, '"') === false) {
-            $result = explode(',', $key);
-        } else {
-            $currentKey = '';
-            $isString = false;
-            for ($i = 0; $i < strlen($key); $i++) {
-                if ($key[$i] == '"') {
-                    if (!$isString) {
-                        $isString = true;
-                        continue;
-                    } else {
-                        $isString = false;
-                        continue;
-                    }
-                }
-                if (!$isString && $key[$i] == ',') {
-                    $result[] = $currentKey;
-                    $currentKey = '';
-                    continue;
-                }
-                $currentKey .= $key[$i];
-            }
-            if (!empty($currentKey)) {
-                $result[] = $currentKey;
+        $parts = preg_split('/\s*,\s*/', trim($key)) ?: [];
+        foreach ($parts as &$part) {
+            if (str_starts_with($part, '"') && str_ends_with($part, '"')) {
+                $part = substr($part, 1, -1);
             }
         }
 
-        return array_map(
-            function ($e) {
-                return trim($e);
-            },
-            $result
-        );
+        return $parts;
     }
 
     /**
      * To avoid splitting on scoped package-names, every but the last @ are considered
      * package name.
      *
-     * @param string $versionString
-     *
      * @return string[]
      */
-    public static function splitVersionString($versionString)
+    public static function splitVersionString(string $versionString): array
     {
          $parts = explode('@', $versionString);
          $version = array_pop($parts);
+
          return [
              implode('@', $parts),
-             $version
+             $version,
          ];
     }
 }

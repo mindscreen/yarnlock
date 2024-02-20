@@ -1,12 +1,14 @@
 # Mindscreen\YarnLock
 
-[![CircleCI](https://circleci.com/gh/mindscreen/yarnlock/tree/master.svg?style=svg)](https://circleci.com/gh/mindscreen/yarnlock/?branch=master)
-[![codecov](https://codecov.io/gh/mindscreen/yarnlock/branch/master/graph/badge.svg?token=HSF16OGPyr)](https://app.codecov.io/gh/mindscreen/yarnlock/branch/master)
+[![CircleCI](https://circleci.com/gh/sweetchuck/mindscreen-yarnlock/tree/2.x.svg?style=svg)](https://circleci.com/gh/sweetchuck/mindscreen-yarnlock/?branch=2.x)
+[![codecov](https://codecov.io/gh/sweetchuck/mindscreen-yarnlock/branch/2.x/graph/badge.svg?token=HSF16OGPyr)](https://app.codecov.io/gh/sweetchuck/mindscreen-yarnlock/branch/2.x)
 
 
 A php-package for parsing and evaluating the [yarn.lock](https://yarnpkg.com/lang/en/docs/yarn-lock/) format.
 
+
 ## Basic Usage
+
 ```php
 <?php
 use Mindscreen\YarnLock;
@@ -19,8 +21,12 @@ $babelCorePackages = $yarnLock->getPackagesByName('babel-core');
 $babelCoreDependencies = $babelCorePackages[0]->getDependencies();
 ```
 
+
 ## Package Depth
-If you maybe don't just want all packages but only the direct dependencies plus one level of indirection, you have to go a little extra mile:
+
+If you maybe don't just want all packages but only the direct dependencies plus
+one level of indirection, you have to go a little extra mile:
+
 ```php
 <?php
 use Mindscreen\YarnLock;

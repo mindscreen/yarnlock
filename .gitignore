@@ -16,5 +16,9 @@
 /phpcs.xml
 
 
+### PHPStan.
+/phpstan.neon
+
+
 ### PHPUnit.
 /phpunit.xml

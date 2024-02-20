@@ -1,21 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Mindscreen\YarnLock\Tests\Unit;
 
+use Mindscreen\YarnLock\ParserErrorCode;
 use Mindscreen\YarnLock\Parser;
 use Mindscreen\YarnLock\ParserException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-/**
- * @covers \Mindscreen\YarnLock\Parser
- */
+#[CoversClass(Parser::class)]
+#[CoversClass(ParserException::class)]
 class ParserTest extends TestBase
 {
 
-    /**
-     * @var Parser
-     */
-    protected $parser;
+    protected Parser $parser;
 
+    /**
+     * {@inheritdoc}
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -23,25 +27,12 @@ class ParserTest extends TestBase
     }
 
     /**
-     * Not using valid input should throw an exception.
+     * Comments don't have to follow indentation rules.
      *
-     * @throws ParserException
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testNullInput()
+    public function testComments(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionCode(1519142104);
-        $this->parser->parse(null);
-    }
-
-    /**
-     * Comments don't have to follow indentation rules
-     * @throws ParserException
-     */
-    public function testComments()
-    {
-        $fileContents = static::getInput('comments.txt');
-        $result = $this->parser->parse($fileContents, true);
         static::assertSame(
             [
                 'foo' => 4,
@@ -51,42 +42,41 @@ class ParserTest extends TestBase
                 ],
                 'baz' => true,
             ],
-            $result
+            $this->parser->parse(static::getInput('comments.txt'), true),
         );
     }
 
     /**
-     * Using mixed indentation characters (like tab and space) should throw an exception
-     * @throws ParserException
+     * Using mixed indentation characters (like tab and space) should throw an exception.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testMixedIndentations()
+    public function testMixedIndentations(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519140104);
-        $fileContents = static::getInput('mixed_indentation.txt');
-        $this->parser->parse($fileContents, true);
+        $this->expectExceptionCode(ParserErrorCode::MixedIndentStyle->value);
+        $this->parser->parse(static::getInput('mixed_indentation.txt'), true);
     }
 
     /**
-     * Inconsistent indentations should throw an exception
-     * @throws ParserException
+     * Inconsistent indentations should throw an exception.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testMixedIndentationDepth()
+    public function testMixedIndentationDepth(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519140379);
-        $fileContents = static::getInput('mixed_indentation_depth.txt');
-        $this->parser->parse($fileContents, true);
+        $this->expectExceptionCode(ParserErrorCode::MixedIndentSize->value);
+        $this->parser->parse(static::getInput('mixed_indentation_depth.txt'), true);
     }
 
     /**
-     * Indentation should work with other indentation than two spaces
-     * @throws ParserException
+     * Indentation should work with other indentation than two spaces.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testDifferentIndentationDepth()
+    public function testDifferentIndentationDepth(): void
     {
-        $fileContents = static::getInput('indentation_depth.txt');
-        $result = $this->parser->parse($fileContents, true);
         static::assertSame(
             [
                 'foo' => [
@@ -96,77 +86,79 @@ class ParserTest extends TestBase
                     ],
                 ],
             ],
-            $result
+            $this->parser->parse(static::getInput('indentation_depth.txt'), true),
         );
     }
 
     /**
-     * A key-value cannot be further indented as the previous one
-     * @throws ParserException
+     * A key-value cannot be further indented as the previous one.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testUnexpectedIndentation()
+    public function testUnexpectedIndentation(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519140493);
-        $fileContents = static::getInput('unexpected_indentation.txt');
-        $this->parser->parse($fileContents, true);
+        $this->expectExceptionCode(ParserErrorCode::UnexpectedIndentation->value);
+        $this->parser->parse(static::getInput('unexpected_indentation.txt'), true);
     }
 
     /**
-     * An array key requires following properties
-     * @throws ParserException
+     * An array key requires following properties.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testMissingProperty()
+    public function testMissingProperty(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519142311);
-        $fileContents = static::getInput('missing_property.txt');
-        $this->parser->parse($fileContents, true);
+        $this->expectExceptionCode(ParserErrorCode::MissingProperty->value);
+        $this->parser->parse(static::getInput('missing_property.txt'), true);
     }
 
     /**
-     * Comments following an array key should still require properties
-     * @throws ParserException
+     * Comments following an array key should still require properties.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testMissingProperty2()
+    public function testMissingProperty2(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519142311);
-        $fileContents = static::getInput('missing_property2.txt');
-        $this->parser->parse($fileContents, true);
+        $this->expectExceptionCode(ParserErrorCode::MissingProperty->value);
+        $this->parser->parse(static::getInput('missing_property2.txt'), true);
     }
 
     /**
-     * The input ending on an array object without values should throw an exception
-     * @throws ParserException
+     * The input ending on an array object without values should throw an exception.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testMissingPropertyEof()
+    public function testMissingPropertyEof(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519142311);
-        $fileContents = static::getInput('missing_property_eof.txt');
-        $this->parser->parse($fileContents, true);
+        $this->expectExceptionCode(ParserErrorCode::UnexpectedEof->value);
+        $this->parser->parse(static::getInput('missing_property_eof.txt'), true);
     }
 
     /**
-     * Keys without value should throw an exception
-     * @throws ParserException
+     * Keys without value should throw an exception.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testMissingPropertyValue()
+    public function testMissingPropertyValue(): void
     {
         $this->expectException(ParserException::class);
-        $this->expectExceptionCode(1519141916);
+        $this->expectExceptionCode(ParserErrorCode::MissingValue->value);
         $this->parser->parse('foo', true);
     }
 
     /**
-     * Different values should yield different value-types
-     * @throws ParserException
+     * Different values should yield different value-types.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testDataTypes()
+    public function testDataTypes(): void
     {
-        $fileContents = static::getInput('datatypes.txt');
-        $result = $this->parser->parse($fileContents);
+        /** @var \stdClass $result */
+        $result = $this->parser->parse(static::getInput('datatypes.txt'));
         static::assertSame(true, $result->bool_t);
         static::assertSame(false, $result->bool_f);
         static::assertSame(null, $result->unset);
@@ -178,69 +170,85 @@ class ParserTest extends TestBase
     }
 
     /**
-     * The parser should create a valid \stdClass structure
-     * @throws ParserException
+     * The parser should create a valid \stdClass structure.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testYarnExampleObject()
+    public function testYarnExampleObject(): void
     {
-        $fileContents = static::getInput('valid_input.txt');
-        $result = $this->parser->parse($fileContents);
-        static::assertSame(true, $result instanceof \stdClass);
-        static::assertSame(4, count(get_object_vars($result)));
-        static::assertObjectHasAttribute('package-1@^1.0.0', $result);
-        $key = 'package-3@^3.0.0';
-        $package3 = $result->$key;
-        static::assertObjectHasAttribute('version', $package3);
-        static::assertObjectHasAttribute('resolved', $package3);
-        static::assertObjectHasAttribute('dependencies', $package3);
+        $result = $this->parser->parse(static::getInput('valid_input.txt'));
+
+        static::assertIsObject($result);
+        static::assertCount(4, get_object_vars($result));
+        static::assertObjectHasProperty('package-1@^1.0.0', $result);
+        $package3 = $result->{'package-3@^3.0.0'};
+        static::assertObjectHasProperty('version', $package3);
+        static::assertObjectHasProperty('resolved', $package3);
+        static::assertObjectHasProperty('dependencies', $package3);
         $package3_dependencies = $package3->dependencies;
-        static::assertSame(1, count(get_object_vars($package3_dependencies)));
+        static::assertCount(1, get_object_vars($package3_dependencies));
     }
 
     /**
-     * The parser should create a valid array structure
-     * @throws ParserException
+     * The parser should create a valid array structure.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testYarnExampleArray()
+    public function testYarnExampleArray(): void
     {
-        $fileContents = static::getInput('valid_input.txt');
-        $result = $this->parser->parse($fileContents, true);
-        static::assertSame(true, is_array($result));
-        static::assertSame(4, count($result));
+        $result = $this->parser->parse(static::getInput('valid_input.txt'), true);
+        static::assertIsArray($result);
+        static::assertCount(4, $result);
         static::assertArrayHasKey('package-1@^1.0.0', $result);
         $package3 = $result['package-3@^3.0.0'];
         static::assertArrayHasKey('version', $package3);
         static::assertArrayHasKey('resolved', $package3);
         static::assertArrayHasKey('dependencies', $package3);
         $package3_dependencies = $package3['dependencies'];
-        static::assertSame(true, is_array($package3_dependencies));
-        static::assertSame(1, count($package3_dependencies));
+        static::assertIsArray($package3_dependencies);
+        static::assertCount(1, $package3_dependencies);
     }
 
     /**
-     * Scoped packages names should not be split at the first '@'
+     * @return array<string, mixed>
      */
-    public function testVersionSplitting()
+    public static function casesVersionSplitting(): array
+    {
+        return [
+            'a' => [
+                'expected' => ['gulp-sourcemaps', '2.6.4'],
+                'versionString' => 'gulp-sourcemaps@2.6.4',
+            ],
+            'b' => [
+                'expected' => ['@gulp-sourcemaps/identity-map', '1.X'],
+                'versionString' => '@gulp-sourcemaps/identity-map@1.X',
+            ],
+        ];
+    }
+
+    /**
+     * Scoped packages names should not be split at the first '@'.
+     *
+     * @param string[] $expected
+     */
+    #[DataProvider('casesVersionSplitting')]
+    public function testVersionSplitting(array $expected, string $versionString): void
     {
         static::assertSame(
-            ['gulp-sourcemaps', '2.6.4'],
-            Parser::splitVersionString('gulp-sourcemaps@2.6.4')
-        );
-
-        static::assertSame(
-            ['@gulp-sourcemaps/identity-map', '1.X'],
-            Parser::splitVersionString('@gulp-sourcemaps/identity-map@1.X')
+            $expected,
+            Parser::splitVersionString($versionString),
         );
     }
 
     /**
-     * Single-value keys should not be split at spaces if they are surrounded with quotes
-     * @throws ParserException
+     * Single-value keys should not be split at spaces if they are surrounded with quotes.
+     *
+     * @throws \Mindscreen\YarnLock\ParserException
      */
-    public function testQuotedKeys()
+    public function testQuotedKeys(): void
     {
-        $fileContents = static::getInput('quoted-key.txt');
-        $result = $this->parser->parse($fileContents, true);
+        /** @var array<string, mixed> $result */
+        $result = $this->parser->parse(static::getInput('quoted-key.txt'), true);
         $data = $result['test'];
         foreach (['foo', 'bar', 'foo bar', 'foobar'] as $item) {
             static::assertArrayHasKey($item, $data);
@@ -248,26 +256,51 @@ class ParserTest extends TestBase
         }
     }
 
-    public function testParseVersionStrings()
+    /**
+     * @return array<string, mixed>
+     */
+    public static function casesParseVersionStrings(): array
     {
-        $input = 'minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"';
-        $versionStrings = Parser::parseVersionStrings($input);
-        static::assertSame(['minimatch@^3.0.0', 'minimatch@^3.0.2', 'minimatch@2 || 3'], $versionStrings);
+        return [
+            'a' => [
+                'expected' => [
+                    'minimatch@^3.0.0', 'minimatch@^3.0.2', 'minimatch@2 || 3',
+                ],
+                'key' => 'minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"',
+            ],
+            'b' => [
+                'expected' => [
+                    'babel-types@^6.10.2', 'babel-types@^6.14.0', 'babel-types@^6.15.0',
+                ],
+                'key' => 'babel-types@^6.10.2, babel-types@^6.14.0, babel-types@^6.15.0',
+            ],
+            'c' => [
+                'expected' => [
+                    'array-uniq@^1.0.1',
+                ],
+                'key' => 'array-uniq@^1.0.1',
+            ],
+            'd' => [
+                'expected' => [
+                    'cssom@>= 0.3.0 < 0.4.0', 'cssom@0.3.x'
+                ],
+                'key' => '"cssom@>= 0.3.0 < 0.4.0", cssom@0.3.x',
+            ],
+            'e' => [
+                'expected' => [
+                    'graceful-readlink@>= 1.0.0'
+                ],
+                'key' => '"graceful-readlink@>= 1.0.0"',
+            ],
+        ];
+    }
 
-        $input = 'babel-types@^6.10.2, babel-types@^6.14.0, babel-types@^6.15.0';
-        $versionStrings = Parser::parseVersionStrings($input);
-        static::assertSame(['babel-types@^6.10.2', 'babel-types@^6.14.0', 'babel-types@^6.15.0'], $versionStrings);
-
-        $input = 'array-uniq@^1.0.1';
-        $versionStrings = Parser::parseVersionStrings($input);
-        static::assertSame(['array-uniq@^1.0.1'], $versionStrings);
-
-        $input = '"cssom@>= 0.3.0 < 0.4.0", cssom@0.3.x';
-        $versionStrings = Parser::parseVersionStrings($input);
-        static::assertSame(['cssom@>= 0.3.0 < 0.4.0', 'cssom@0.3.x'], $versionStrings);
-
-        $input = '"graceful-readlink@>= 1.0.0"';
-        $versionStrings = Parser::parseVersionStrings($input);
-        static::assertSame(['graceful-readlink@>= 1.0.0'], $versionStrings);
+    /**
+     * @param string[] $expected
+     */
+    #[DataProvider('casesParseVersionStrings')]
+    public function testParseVersionStrings(array $expected, string $key): void
+    {
+        static::assertSame($expected, Parser::parseVersionStrings($key));
     }
 }

@@ -1,15 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Mindscreen\YarnLock\Tests\Unit;
 
 use Mindscreen\YarnLock\Package;
 
-/**
- * @covers \Mindscreen\YarnLock\Package
- */
 class PackageTest extends TestBase
 {
-    public function testAvoidDuplicates()
+    public function testAvoidDuplicates(): void
     {
         $package1 = new Package();
         $package1->setName('package1');
@@ -23,7 +22,7 @@ class PackageTest extends TestBase
         $package1->addDependency($package2);
         $package2->addResolves($package1);
 
-        static::assertSame(1, count($package1->getDependencies()));
-        static::assertSame(1, count($package2->getResolves()));
+        static::assertCount(1, $package1->getProdRequiredDependencies());
+        static::assertCount(1, $package2->getResolves());
     }
 }
