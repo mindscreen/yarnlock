@@ -1,10 +1,14 @@
 <?php
 
+namespace Mindscreen\YarnLock\Tests\Unit;
+
 use Mindscreen\YarnLock\Parser;
 use Mindscreen\YarnLock\ParserException;
-use PHPUnit\Framework\TestCase;
 
-class ParserTest extends TestCase
+/**
+ * @covers \Mindscreen\YarnLock\Parser
+ */
+class ParserTest extends TestBase
 {
 
     /**
@@ -12,18 +16,20 @@ class ParserTest extends TestCase
      */
     protected $parser;
 
-    protected function setUp()
+    protected function setUp(): void
     {
+        parent::setUp();
         $this->parser = new Parser();
     }
 
     /**
-     * Not using valid input should throw an exception
+     * Not using valid input should throw an exception.
+     *
      * @throws ParserException
      */
     public function testNullInput()
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionCode(1519142104);
         $this->parser->parse(null);
     }
@@ -34,16 +40,19 @@ class ParserTest extends TestCase
      */
     public function testComments()
     {
-        $fileContents = file_get_contents('tests/parserinput/comments');
+        $fileContents = static::getInput('comments.txt');
         $result = $this->parser->parse($fileContents, true);
-        $this->assertEquals([
-            'foo' => 4,
-            'bar' => [
-                'foo' => false,
-                'baz' => null,
+        static::assertSame(
+            [
+                'foo' => 4,
+                'bar' => [
+                    'foo' => false,
+                    'baz' => null,
+                ],
+                'baz' => true,
             ],
-            'baz' => true,
-        ], $result);
+            $result
+        );
     }
 
     /**
@@ -54,7 +63,7 @@ class ParserTest extends TestCase
     {
         $this->expectException(ParserException::class);
         $this->expectExceptionCode(1519140104);
-        $fileContents = file_get_contents('tests/parserinput/mixed_indentation');
+        $fileContents = static::getInput('mixed_indentation.txt');
         $this->parser->parse($fileContents, true);
     }
 
@@ -66,7 +75,7 @@ class ParserTest extends TestCase
     {
         $this->expectException(ParserException::class);
         $this->expectExceptionCode(1519140379);
-        $fileContents = file_get_contents('tests/parserinput/mixed_indentation_depth');
+        $fileContents = static::getInput('mixed_indentation_depth.txt');
         $this->parser->parse($fileContents, true);
     }
 
@@ -76,16 +85,19 @@ class ParserTest extends TestCase
      */
     public function testDifferentIndentationDepth()
     {
-        $fileContents = file_get_contents('tests/parserinput/indentation_depth');
+        $fileContents = static::getInput('indentation_depth.txt');
         $result = $this->parser->parse($fileContents, true);
-        $this->assertEquals([
-            'foo' => [
-                'bar' => 'bar',
-                'baz' => [
-                    'foobar' => true
-                ]
-            ]
-        ], $result);
+        static::assertSame(
+            [
+                'foo' => [
+                    'bar' => 'bar',
+                    'baz' => [
+                        'foobar' => true,
+                    ],
+                ],
+            ],
+            $result
+        );
     }
 
     /**
@@ -96,7 +108,7 @@ class ParserTest extends TestCase
     {
         $this->expectException(ParserException::class);
         $this->expectExceptionCode(1519140493);
-        $fileContents = file_get_contents('tests/parserinput/unexpected_indentation');
+        $fileContents = static::getInput('unexpected_indentation.txt');
         $this->parser->parse($fileContents, true);
     }
 
@@ -108,7 +120,7 @@ class ParserTest extends TestCase
     {
         $this->expectException(ParserException::class);
         $this->expectExceptionCode(1519142311);
-        $fileContents = file_get_contents('tests/parserinput/missing_property');
+        $fileContents = static::getInput('missing_property.txt');
         $this->parser->parse($fileContents, true);
     }
 
@@ -120,7 +132,7 @@ class ParserTest extends TestCase
     {
         $this->expectException(ParserException::class);
         $this->expectExceptionCode(1519142311);
-        $fileContents = file_get_contents('tests/parserinput/missing_property2');
+        $fileContents = static::getInput('missing_property2.txt');
         $this->parser->parse($fileContents, true);
     }
 
@@ -132,7 +144,7 @@ class ParserTest extends TestCase
     {
         $this->expectException(ParserException::class);
         $this->expectExceptionCode(1519142311);
-        $fileContents = file_get_contents('tests/parserinput/missing_property_eof');
+        $fileContents = static::getInput('missing_property_eof.txt');
         $this->parser->parse($fileContents, true);
     }
 
@@ -153,16 +165,16 @@ class ParserTest extends TestCase
      */
     public function testDataTypes()
     {
-        $fileContents = file_get_contents('tests/parserinput/datatypes');
+        $fileContents = static::getInput('datatypes.txt');
         $result = $this->parser->parse($fileContents);
-        $this->assertSame(true, $result->bool_t);
-        $this->assertSame(false, $result->bool_f);
-        $this->assertSame(null, $result->unset);
-        $this->assertSame(42, $result->int);
-        $this->assertSame(13.37, $result->float);
-        $this->assertSame('true', $result->string_t);
-        $this->assertSame('string string', $result->string);
-        $this->assertSame('12.13.14', $result->other);
+        static::assertSame(true, $result->bool_t);
+        static::assertSame(false, $result->bool_f);
+        static::assertSame(null, $result->unset);
+        static::assertSame(42, $result->int);
+        static::assertSame(13.37, $result->float);
+        static::assertSame('true', $result->string_t);
+        static::assertSame('string string', $result->string);
+        static::assertSame('12.13.14', $result->other);
     }
 
     /**
@@ -171,18 +183,18 @@ class ParserTest extends TestCase
      */
     public function testYarnExampleObject()
     {
-        $fileContents = file_get_contents('tests/parserinput/valid_input');
+        $fileContents = static::getInput('valid_input.txt');
         $result = $this->parser->parse($fileContents);
-        $this->assertEquals(true, $result instanceof \stdClass);
-        $this->assertEquals(4, count(get_object_vars($result)));
-        $this->assertObjectHasAttribute('package-1@^1.0.0', $result);
+        static::assertSame(true, $result instanceof \stdClass);
+        static::assertSame(4, count(get_object_vars($result)));
+        static::assertObjectHasAttribute('package-1@^1.0.0', $result);
         $key = 'package-3@^3.0.0';
         $package3 = $result->$key;
-        $this->assertObjectHasAttribute('version', $package3);
-        $this->assertObjectHasAttribute('resolved', $package3);
-        $this->assertObjectHasAttribute('dependencies', $package3);
+        static::assertObjectHasAttribute('version', $package3);
+        static::assertObjectHasAttribute('resolved', $package3);
+        static::assertObjectHasAttribute('dependencies', $package3);
         $package3_dependencies = $package3->dependencies;
-        $this->assertEquals(1, count(get_object_vars($package3_dependencies)));
+        static::assertSame(1, count(get_object_vars($package3_dependencies)));
     }
 
     /**
@@ -191,18 +203,18 @@ class ParserTest extends TestCase
      */
     public function testYarnExampleArray()
     {
-        $fileContents = file_get_contents('tests/parserinput/valid_input');
+        $fileContents = static::getInput('valid_input.txt');
         $result = $this->parser->parse($fileContents, true);
-        $this->assertEquals(true, is_array($result));
-        $this->assertEquals(4, count($result));
-        $this->assertArrayHasKey('package-1@^1.0.0', $result);
+        static::assertSame(true, is_array($result));
+        static::assertSame(4, count($result));
+        static::assertArrayHasKey('package-1@^1.0.0', $result);
         $package3 = $result['package-3@^3.0.0'];
-        $this->assertArrayHasKey('version', $package3);
-        $this->assertArrayHasKey('resolved', $package3);
-        $this->assertArrayHasKey('dependencies', $package3);
+        static::assertArrayHasKey('version', $package3);
+        static::assertArrayHasKey('resolved', $package3);
+        static::assertArrayHasKey('dependencies', $package3);
         $package3_dependencies = $package3['dependencies'];
-        $this->assertEquals(true, is_array($package3_dependencies));
-        $this->assertEquals(1, count($package3_dependencies));
+        static::assertSame(true, is_array($package3_dependencies));
+        static::assertSame(1, count($package3_dependencies));
     }
 
     /**
@@ -210,12 +222,12 @@ class ParserTest extends TestCase
      */
     public function testVersionSplitting()
     {
-        $this->assertEquals(
+        static::assertSame(
             ['gulp-sourcemaps', '2.6.4'],
             Parser::splitVersionString('gulp-sourcemaps@2.6.4')
         );
 
-        $this->assertEquals(
+        static::assertSame(
             ['@gulp-sourcemaps/identity-map', '1.X'],
             Parser::splitVersionString('@gulp-sourcemaps/identity-map@1.X')
         );
@@ -227,12 +239,12 @@ class ParserTest extends TestCase
      */
     public function testQuotedKeys()
     {
-        $fileContents = file_get_contents('tests/parserinput/quoted-key');
+        $fileContents = static::getInput('quoted-key.txt');
         $result = $this->parser->parse($fileContents, true);
         $data = $result['test'];
         foreach (['foo', 'bar', 'foo bar', 'foobar'] as $item) {
-            $this->assertArrayHasKey($item, $data);
-            $this->assertEquals($item, $data[$item]);
+            static::assertArrayHasKey($item, $data);
+            static::assertSame($item, $data[$item]);
         }
     }
 
@@ -240,22 +252,22 @@ class ParserTest extends TestCase
     {
         $input = 'minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"';
         $versionStrings = Parser::parseVersionStrings($input);
-        $this->assertEquals(['minimatch@^3.0.0', 'minimatch@^3.0.2', 'minimatch@2 || 3'], $versionStrings);
+        static::assertSame(['minimatch@^3.0.0', 'minimatch@^3.0.2', 'minimatch@2 || 3'], $versionStrings);
 
         $input = 'babel-types@^6.10.2, babel-types@^6.14.0, babel-types@^6.15.0';
         $versionStrings = Parser::parseVersionStrings($input);
-        $this->assertEquals(['babel-types@^6.10.2', 'babel-types@^6.14.0', 'babel-types@^6.15.0'], $versionStrings);
+        static::assertSame(['babel-types@^6.10.2', 'babel-types@^6.14.0', 'babel-types@^6.15.0'], $versionStrings);
 
         $input = 'array-uniq@^1.0.1';
         $versionStrings = Parser::parseVersionStrings($input);
-        $this->assertEquals(['array-uniq@^1.0.1'], $versionStrings);
+        static::assertSame(['array-uniq@^1.0.1'], $versionStrings);
 
         $input = '"cssom@>= 0.3.0 < 0.4.0", cssom@0.3.x';
         $versionStrings = Parser::parseVersionStrings($input);
-        $this->assertEquals(['cssom@>= 0.3.0 < 0.4.0', 'cssom@0.3.x'], $versionStrings);
+        static::assertSame(['cssom@>= 0.3.0 < 0.4.0', 'cssom@0.3.x'], $versionStrings);
 
         $input = '"graceful-readlink@>= 1.0.0"';
         $versionStrings = Parser::parseVersionStrings($input);
-        $this->assertEquals(['graceful-readlink@>= 1.0.0'], $versionStrings);
+        static::assertSame(['graceful-readlink@>= 1.0.0'], $versionStrings);
     }
 }

@@ -1,11 +1,14 @@
 <?php
 
+namespace Mindscreen\YarnLock\Tests\Unit;
+
 use Mindscreen\YarnLock\Package;
 use Mindscreen\YarnLock\YarnLock;
 
-use PHPUnit\Framework\TestCase;
-
-class YarnLockTest extends TestCase
+/**
+ * @covers \Mindscreen\YarnLock\YarnLock
+ */
+class YarnLockTest extends TestBase
 {
     /**
      * @var YarnLock
@@ -18,14 +21,14 @@ class YarnLockTest extends TestCase
      */
     public function testNullInput()
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionCode(1519201965);
         YarnLock::fromString(null);
     }
 
-    protected function setUp()
+    protected function setUp(): void
     {
-        $yarnLockContents = file_get_contents('tests/parserinput/example-yarn-package.lock');
+        $yarnLockContents = static::getInput('example-yarn-package.txt');
         $this->yarnLock = YarnLock::fromString($yarnLockContents);
     }
 
@@ -35,12 +38,12 @@ class YarnLockTest extends TestCase
     public function testPackageExists()
     {
         // babel-core@^6.0.0, babel-core@^6.11.4, babel-core@^6.14.0:
-        $this->assertTrue($this->yarnLock->hasPackage('babel-core'));
-        $this->assertTrue($this->yarnLock->hasPackage('babel-core', '^6.0.0'));
-        $this->assertTrue($this->yarnLock->hasPackage('babel-core', '^6.11.4'));
-        $this->assertTrue($this->yarnLock->hasPackage('babel-core', '^6.14.0'));
-        $this->assertTrue($this->yarnLock->hasPackage('babel-core', '6.14.0'));
-        $this->assertFalse($this->yarnLock->hasPackage('babel-core', '6.15.0'));
+        static::assertTrue($this->yarnLock->hasPackage('babel-core'));
+        static::assertTrue($this->yarnLock->hasPackage('babel-core', '^6.0.0'));
+        static::assertTrue($this->yarnLock->hasPackage('babel-core', '^6.11.4'));
+        static::assertTrue($this->yarnLock->hasPackage('babel-core', '^6.14.0'));
+        static::assertTrue($this->yarnLock->hasPackage('babel-core', '6.14.0'));
+        static::assertFalse($this->yarnLock->hasPackage('babel-core', '6.15.0'));
     }
 
     /**
@@ -51,17 +54,17 @@ class YarnLockTest extends TestCase
     {
         $packageName = 'babel-core';
         $package = $this->yarnLock->getPackage($packageName);
-        $this->assertEquals($packageName, $package->getName());
+        static::assertSame($packageName, $package->getName());
 
         $packageVersion = '6.14.0';
         $package = $this->yarnLock->getPackage($packageName, $packageVersion);
-        $this->assertEquals($packageVersion, $package->getVersion());
+        static::assertSame($packageVersion, $package->getVersion());
 
         $package = $this->yarnLock->getPackage($packageName, '^6.11.4');
-        $this->assertEquals($packageVersion, $package->getVersion());
+        static::assertSame($packageVersion, $package->getVersion());
 
         $package = $this->yarnLock->getPackage('foo');
-        $this->assertNull($package);
+        static::assertNull($package);
     }
 
     /**
@@ -69,7 +72,7 @@ class YarnLockTest extends TestCase
      */
     public function testDepth()
     {
-        $this->assertEquals(10, $this->yarnLock->getDepth());
+        static::assertSame(10, $this->yarnLock->getDepth());
     }
 
     /**
@@ -79,7 +82,14 @@ class YarnLockTest extends TestCase
      */
     protected function getPackageStrings(array $packages)
     {
-        return array_values(array_map(function(Package $p) { return $p->__toString(); }, $packages));
+        return array_values(
+            array_map(
+                function (Package $p) {
+                    return $p->__toString();
+                },
+                $packages
+            )
+        );
     }
 
     /**
@@ -93,20 +103,19 @@ class YarnLockTest extends TestCase
         ];
         $this->yarnLock->calculateDepth($rootPackages);
         $depth0 = $this->yarnLock->getPackagesByDepth(0);
-        $this->assertEquals(count($rootPackages), count($depth0));
+        static::assertSame(count($rootPackages), count($depth0));
 
         $depth1 = $this->yarnLock->getPackagesByDepth(1);
         $depth2 = $this->yarnLock->getPackagesByDepth(2);
         $depth12 = $this->yarnLock->getPackagesByDepth(1, 3);
-        $this->assertEquals(count($depth1) + count($depth2), count($depth12));
+        static::assertSame(count($depth1) + count($depth2), count($depth12));
 
         // should not be calculated again
         $this->yarnLock->calculateDepth();
         $depthStart = $this->yarnLock->getPackagesByDepth(0, 2);
         $depthRest = $this->yarnLock->getPackagesByDepth(2, null);
-        var_dump(count($depthRest));
         $allPackages = $this->yarnLock->getPackages();
-        $this->assertEquals(count($allPackages), count($depthStart) + count($depthRest));
+        static::assertSame(count($allPackages), count($depthStart) + count($depthRest));
     }
 
     /**
@@ -115,16 +124,21 @@ class YarnLockTest extends TestCase
     public function testGetPackagesByName()
     {
         $packages = $this->yarnLock->getPackagesByName('source-map');
-        $this->assertEquals(4, count($packages));
+        static::assertSame(4, count($packages));
         $expectedVersions = [
             ['^0.4.4'],
             ['^0.5.0', '^0.5.3', '~0.5.1'],
             ['~0.2.0'],
             ['0.1.32'],
         ];
-        $versions = array_map(function(Package $p) { return $p->getSatisfiedVersions(); }, $packages);
+        $versions = array_map(
+            function (Package $p) {
+                return $p->getSatisfiedVersions();
+            },
+            $packages
+        );
         $versions = array_values($versions);
-        $this->assertEquals($expectedVersions, $versions);
+        static::assertSame($expectedVersions, $versions);
     }
 
     /**
@@ -133,7 +147,7 @@ class YarnLockTest extends TestCase
     public function testPackageString()
     {
         foreach ($this->yarnLock->getPackages() as $package) {
-            $this->assertEquals($package->getName() . '@' . $package->getVersion(), $package->__toString());
+            static::assertSame($package->getName() . '@' . $package->getVersion(), $package->__toString());
         }
     }
 
@@ -143,14 +157,14 @@ class YarnLockTest extends TestCase
     public function testResolvedSet()
     {
         foreach ($this->yarnLock->getPackages() as $package) {
-            $this->assertNotEmpty($package->getResolved());
+            static::assertNotEmpty($package->getResolved());
         }
     }
 
     public function testYarnExample()
     {
-        $yarnLockContents = file_get_contents('tests/parserinput/deep');
+        $yarnLockContents = static::getInput('deep.txt');
         $yarnLock = YarnLock::fromString($yarnLockContents);
-        $this->assertEquals(4, count($yarnLock->getPackages()));
+        static::assertSame(4, count($yarnLock->getPackages()));
     }
 }
