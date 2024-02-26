@@ -50,10 +50,17 @@ class Parser
                             $indentationDepth = $i;
                         } else {
                             if ($i % $indentationDepth !== 0) {
-                                throw new ParserException(sprintf('Indentation depth is not constant at line %s', $l), 1519140379);
+                                throw new ParserException(
+                                    sprintf('Indentation depth is not constant at line %s', $l),
+                                    1519140379
+                                );
                             }
+
                             if ($i / $indentationDepth > $indentationLevel) {
-                                throw new ParserException(sprintf('Unexpected indentation at line %s', $l), 1519140493);
+                                throw new ParserException(
+                                    sprintf('Unexpected indentation at line %s', $l),
+                                    1519140493
+                                );
                             }
                         }
                         $newIndentationLevel = $i / $indentationDepth;
@@ -165,7 +172,9 @@ class Parser
      * If parts of keys contain spaces, they are surrounded with quotes,
      * e.g. `minimatch@^3.0.0, minimatch@^3.0.2, "minimatch@2 || 3"`, which would
      * fail when simply splitting on spaces.
+     *
      * @param string $key
+     *
      * @return string[]
      */
     public static function parseVersionStrings($key)
@@ -197,8 +206,13 @@ class Parser
                 $result[] = $currentKey;
             }
         }
-        $result = array_map(function($e) { return trim($e); }, $result);
-        return $result;
+
+        return array_map(
+            function ($e) {
+                return trim($e);
+            },
+            $result
+        );
     }
 
     /**
@@ -206,6 +220,7 @@ class Parser
      * package name.
      *
      * @param string $versionString
+     *
      * @return string[]
      */
     public static function splitVersionString($versionString)

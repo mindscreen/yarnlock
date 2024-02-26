@@ -1,6 +1,6 @@
 <?php
-namespace Mindscreen\YarnLock;
 
+namespace Mindscreen\YarnLock;
 
 class YarnLock
 {
@@ -42,6 +42,7 @@ class YarnLock
     {
         $packageVersionMap = [];
         $allPackages = [];
+        $handledPackages = [];
         foreach (get_object_vars($data) as $packageVersions => $dependencyInformation) {
             $packageVersionStrings = Parser::parseVersionStrings($packageVersions);
             $packageName = Parser::splitVersionString($packageVersionStrings[0])[0];
@@ -64,14 +65,14 @@ class YarnLock
             $allPackages[] = $package;
         }
 
-        foreach ($packageVersionMap as $packageName => $versions) {
-            foreach ($versions as $version => $packageInformation) {
+        foreach ($packageVersionMap as $versions) {
+            foreach ($versions as $packageInformation) {
                 /** @var Package $package */
                 $package = $packageInformation['package'];
-                if (isset($package->__handled)) {
+                if (!empty($handledPackages[spl_object_id($package)])) {
                     continue;
                 }
-                $package->__handled = true;
+                $handledPackages[spl_object_id($package)] = true;
                 $data = $packageInformation['data'];
                 foreach ([
                     Package::DEPENDENCY_TYPE_DEFAULT,
@@ -94,6 +95,7 @@ class YarnLock
 
     /**
      * Get all packages resolved in this lock file
+     *
      * @return Package[]
      */
     public function getPackages()
@@ -113,13 +115,19 @@ class YarnLock
      * A package might be required in multiple versions.
      *
      * @param string $packageName
+     *
      * @return Package[]
      */
     public function getPackagesByName($packageName)
     {
-        return array_values(array_filter($this->packages, function(Package $package) use ($packageName) {
-            return $package->getName() === $packageName;
-        }));
+        return array_values(
+            array_filter(
+                $this->packages,
+                function (Package $package) use ($packageName) {
+                    return $package->getName() === $packageName;
+                }
+            )
+        );
     }
 
     /**
@@ -129,21 +137,31 @@ class YarnLock
      *
      * @param int $start
      * @param int $end
+     *
      * @return Package[]
      */
     public function getPackagesByDepth($start, $end = 0)
     {
+        $this->calculateDepth();
         if ($end === 0 || ($end !== null && $end < $start)) {
             $end = $start + 1;
         }
-        return array_values(array_filter($this->packages, function(Package $package) use ($start, $end) {
-            $depth = $package->getDepth();
-            if ($depth === null) {
-                return $end === null;
-            }
-            $to = $end === null ? true : $depth < $end;
-            return $depth >= $start && $to;
-        }));
+
+        return array_values(
+            array_filter(
+                $this->packages,
+                function (Package $package) use ($start, $end) {
+                    $depth = $package->getDepth();
+                    if ($depth === null) {
+                        return $end === null;
+                    }
+
+                    $to = $end === null || ($depth < $end);
+
+                    return $depth >= $start && $to;
+                }
+            )
+        );
     }
 
     /**
@@ -154,9 +172,14 @@ class YarnLock
     public function getDepth()
     {
         $this->calculateDepth();
-        return array_reduce($this->packages, function($d, Package $package) {
-            return max($d, $package->getDepth());
-        }, 0) + 1;
+
+        return 1 + array_reduce(
+            $this->packages,
+            function ($d, Package $package) {
+                return max($d, $package->getDepth());
+            },
+            0
+        );
     }
 
     /**
@@ -168,6 +191,7 @@ class YarnLock
      *
      * @param string $name
      * @param string $version
+     *
      * @return Package|null
      */
     public function getPackage($name, $version = null)
@@ -195,6 +219,7 @@ class YarnLock
      *
      * @param string $name
      * @param string $version
+     *
      * @return bool
      */
     public function hasPackage($name, $version = null)
@@ -215,9 +240,14 @@ class YarnLock
             return;
         }
         if ($root === null) {
-            $root = array_values(array_filter($this->packages, function(Package $p) {
-                return count($p->getResolves()) === 0;
-            }));
+            $root = array_values(
+                array_filter(
+                    $this->packages,
+                    function (Package $p) {
+                        return count($p->getResolves()) === 0;
+                    }
+                )
+            );
         }
         /** @var Package $rootNode */
         foreach ($root as $rootNode) {
@@ -230,7 +260,8 @@ class YarnLock
      * @param Package $node
      * @param int $depth
      */
-    protected function calculateChildDepth(Package $node, $depth) {
+    protected function calculateChildDepth(Package $node, $depth)
+    {
         if ($node->getDepth() !== null && $node->getDepth() <= $depth) {
             return;
         }

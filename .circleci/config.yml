@@ -1,0 +1,218 @@
+
+version: 2.1
+
+orbs:
+    codecov: 'codecov/codecov@3.0.0'
+
+.env_app: &env_app
+    SHELL: '/bin/bash'
+
+.env_composer: &env_composer
+    COMPOSER_NO_INTERACTION: '1'
+    COMPOSER_MEMORY_LIMIT: '-1'
+    COMPOSER_DISABLE_XDEBUG_WARN: '1'
+    COMPOSER_CACHE_DIR: '/home/circleci/.cache/composer'
+
+executors:
+    php_min:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:7.2'
+
+    php_plus1:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:7.3'
+
+    php_plus2:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:7.4'
+
+    php_plus3:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:8.0'
+
+    php_plus4:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:8.1'
+
+    php_plus5:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:8.2'
+
+    php_plus6:
+        resource_class: 'small'
+        environment:
+            <<: *env_app
+            <<: *env_composer
+        docker:
+            -
+                name: 'main'
+                image: 'cimg/php:8.3'
+
+commands:
+    install_php_extension_pcov:
+        description: 'Install PCOV PHP extension'
+        steps:
+            -
+                run:
+                    name: 'Install PCOV PHP extension - pecl install pcov'
+                    command: |-
+                        if php -m | grep pcov ; then
+                            exit 0
+                        fi
+
+                        sudo pecl install pcov
+                        if php -m | grep pcov ; then
+                            exit 0
+                        fi
+
+                        scanDir="$(php -i | grep --color=never --only-matching --perl-regexp '(?<=^Scan this dir for additional \.ini files => ).+')"
+                        echo 'extension=pcov' | sudo tee "${scanDir}/pcov.ini"
+                        php -m | grep pcov
+
+    composer_install:
+        description: 'Install Composer dependencies with cache restore and save'
+        steps:
+            -
+                restore_cache:
+                    name: 'Composer - cache restore'
+                    keys:
+                        - 'composer-{{ checksum "./composer.lock" }}-2'
+
+            -
+                run:
+                    name: 'Composer - install'
+                    command: >
+                        composer install --ansi --no-progress
+
+            -
+                save_cache:
+                    name: 'Composer - cache save'
+                    key: 'composer-{{ checksum "./composer.lock" }}-2'
+                    paths:
+                        - '~/.cache/composer/'
+
+    lint:
+        description: 'Run linters'
+        steps:
+            -
+                run:
+                    name: 'Run composer validate'
+                    command: |-
+                        composer validate
+            -
+                run:
+                    name: 'Run PHPCS'
+                    command: |-
+                        "$(composer config 'bin-dir')/phpcs"
+
+    test:
+        description: 'Run tests'
+        parameters:
+            executor:
+                type: 'string'
+        steps:
+            -
+                run:
+                    name: 'Test - Unit'
+                    command: |-
+                        mkdir -p '.cache' 'reports/human' 'reports/machine'
+                        "$(composer config 'bin-dir')/phpunit" --testsuite='Unit'
+            -
+                when:
+                    condition:
+                        equal: ['<<parameters.executor>>', 'php_min']
+                    steps:
+                        -
+                            codecov/upload:
+                                flags: 'unit'
+                                file: './reports/machine/coverage.clover.xml'
+            -
+                store_test_results:
+                    name: 'Store unit test results'
+                    path: './reports/machine/result.junit.xml'
+
+jobs:
+    build:
+        executor: 'php_min'
+        steps:
+            - 'checkout'
+            - 'composer_install'
+    lint:
+        executor: 'php_min'
+        steps:
+            - 'checkout'
+            - 'composer_install'
+            - 'lint'
+    test:
+        parameters:
+            executor:
+                type: 'string'
+        executor: '<<parameters.executor>>'
+        steps:
+            - 'checkout'
+            - 'install_php_extension_pcov'
+            - 'composer_install'
+            -
+                test:
+                    executor: '<<parameters.executor>>'
+
+workflows:
+    lint_and_test:
+        jobs:
+            -
+                build: {}
+            -
+                lint:
+                    requires:
+                        - 'build'
+            -
+                test:
+                    name: 'test_<<matrix.executor>>'
+                    requires:
+                        - 'build'
+                    matrix:
+                        parameters:
+                            executor:
+                                - 'php_min'
+                                - 'php_plus1'
+                                - 'php_plus2'
+                                - 'php_plus3'
+                                - 'php_plus4'
+                                - 'php_plus5'
+                                - 'php_plus6'

@@ -1,4 +1,20 @@
-.idea
-vendor/
-coverage/
-composer.lock
+### Common places for toolings.
+/.cache/
+/reports/
+
+
+### Composer.
+/vendor/
+/mindscreen-yarnlock-*.tar
+/mindscreen-yarnlock-*.tar.bz2
+/mindscreen-yarnlock-*.tar.gz
+/mindscreen-yarnlock-*.tgz
+/mindscreen-yarnlock-*.zip
+
+
+### PHPCS.
+/phpcs.xml
+
+
+### PHPUnit.
+/phpunit.xml

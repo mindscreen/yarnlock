@@ -59,7 +59,7 @@ class Package
      *
      * @var Package[]
      */
-    protected $resolves;
+    protected $resolves = [];
 
     /**
      * Depth in the dependency tree. Only initialized once the YarnLock computes
