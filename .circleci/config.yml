@@ -22,59 +22,9 @@ executors:
         docker:
             -
                 name: 'main'
-                image: 'cimg/php:7.2'
-
-    php_plus1:
-        resource_class: 'small'
-        environment:
-            <<: *env_app
-            <<: *env_composer
-        docker:
-            -
-                name: 'main'
-                image: 'cimg/php:7.3'
-
-    php_plus2:
-        resource_class: 'small'
-        environment:
-            <<: *env_app
-            <<: *env_composer
-        docker:
-            -
-                name: 'main'
-                image: 'cimg/php:7.4'
-
-    php_plus3:
-        resource_class: 'small'
-        environment:
-            <<: *env_app
-            <<: *env_composer
-        docker:
-            -
-                name: 'main'
-                image: 'cimg/php:8.0'
-
-    php_plus4:
-        resource_class: 'small'
-        environment:
-            <<: *env_app
-            <<: *env_composer
-        docker:
-            -
-                name: 'main'
-                image: 'cimg/php:8.1'
-
-    php_plus5:
-        resource_class: 'small'
-        environment:
-            <<: *env_app
-            <<: *env_composer
-        docker:
-            -
-                name: 'main'
                 image: 'cimg/php:8.2'
 
-    php_plus6:
+    php_plus1:
         resource_class: 'small'
         environment:
             <<: *env_app
@@ -140,6 +90,11 @@ commands:
                     name: 'Run PHPCS'
                     command: |-
                         "$(composer config 'bin-dir')/phpcs"
+            -
+                run:
+                    name: 'Run PHPStan'
+                    command: |-
+                        "$(composer config 'bin-dir')/phpstan" analyze
 
     test:
         description: 'Run tests'
@@ -211,8 +166,3 @@ workflows:
                             executor:
                                 - 'php_min'
                                 - 'php_plus1'
-                                - 'php_plus2'
-                                - 'php_plus3'
-                                - 'php_plus4'
-                                - 'php_plus5'
-                                - 'php_plus6'

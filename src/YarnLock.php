@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Mindscreen\YarnLock;
 
 class YarnLock
@@ -8,37 +10,32 @@ class YarnLock
     /**
      * @var Package[]
      */
-    protected $packages;
+    protected array $packages;
+
+    protected bool $depthCalculated = false;
 
     /**
-     * @var boolean
-     */
-    protected $depthCalculated = false;
-
-    /**
-     * Creates an instance from the contents of a yarn.lock file
-     * @param string $input
-     * @return YarnLock
+     * Creates an instance from the contents of a yarn.lock file.
+     *
      * @throws ParserException
      * @throws \InvalidArgumentException
      */
-    public static function fromString($input)
+    public static function fromString(string $input): static
     {
-        if (!is_string($input)) {
-            throw new \InvalidArgumentException('YarnLock::fromString expects input to be a string', 1519201965);
-        }
         $parser = new Parser();
+        /** @var \stdClass $yarnLockData */
         $yarnLockData = $parser->parse($input);
+        // @phpstan-ignore-next-line
         $yarnLock = new static();
-        $yarnLock->setPackages(self::evaluatePackages($yarnLockData));
+        $yarnLock->setPackages(static::evaluatePackages($yarnLockData));
+
         return $yarnLock;
     }
 
     /**
-     * @param \stdClass $data
-     * @return array
+     * @return Package[]
      */
-    protected static function evaluatePackages($data)
+    protected static function evaluatePackages(object $data): array
     {
         $packageVersionMap = [];
         $allPackages = [];
@@ -56,7 +53,7 @@ class YarnLock
             $package->setResolved($dependencyInformation->resolved);
             foreach ($packageVersionStrings as &$packageVersionString) {
                 $packageVersionString = Parser::splitVersionString($packageVersionString)[1];
-                $package->addVersion($packageVersionString);
+                $package->addSatisfiedVersion($packageVersionString);
                 $packageVersionMap[$packageName][$packageVersionString] = [
                     'package' => $package,
                     'data' => $dependencyInformation,
@@ -72,17 +69,13 @@ class YarnLock
                 if (!empty($handledPackages[spl_object_id($package)])) {
                     continue;
                 }
+
                 $handledPackages[spl_object_id($package)] = true;
                 $data = $packageInformation['data'];
-                foreach ([
-                    Package::DEPENDENCY_TYPE_DEFAULT,
-                    Package::DEPENDENCY_TYPE_DEV,
-                    Package::DEPENDENCY_TYPE_OPTIONAL,
-                    Package::DEPENDENCY_TYPE_PEER,
-                         ] as $dependencyType) {
-                    $field = Package::getDependencyField($dependencyType);
-                    if (isset($data->$field)) {
-                        foreach ($data->$field as $dependencyName => $dependencyVersion) {
+                foreach (DependencyType::cases() as $dependencyType) {
+                    $field = $dependencyType->value;
+                    if (isset($data->{$field})) {
+                        foreach ($data->{$field} as $dependencyName => $dependencyVersion) {
                             $dependencyPackage = $packageVersionMap[$dependencyName][$dependencyVersion]['package'];
                             $package->addDependency($dependencyPackage, $dependencyType);
                         }
@@ -94,11 +87,11 @@ class YarnLock
     }
 
     /**
-     * Get all packages resolved in this lock file
+     * Get all packages resolved in this lock file.
      *
      * @return Package[]
      */
-    public function getPackages()
+    public function getPackages(): array
     {
         return $this->packages;
     }
@@ -106,27 +99,27 @@ class YarnLock
     /**
      * @param Package[] $packages
      */
-    public function setPackages($packages)
+    public function setPackages(array $packages): static
     {
         $this->packages = $packages;
+
+        return $this;
     }
 
     /**
      * A package might be required in multiple versions.
      *
-     * @param string $packageName
-     *
      * @return Package[]
      */
-    public function getPackagesByName($packageName)
+    public function getPackagesByName(string $packageName): array
     {
         return array_values(
             array_filter(
                 $this->packages,
-                function (Package $package) use ($packageName) {
+                function (Package $package) use ($packageName): bool {
                     return $package->getName() === $packageName;
-                }
-            )
+                },
+            ),
         );
     }
 
@@ -135,12 +128,9 @@ class YarnLock
      * (`getPackagesByDepth(0, 2)`) or starting from a certain depth (`getPackagesByDepth(1, null)`).
      * Note that $end is exclusive.
      *
-     * @param int $start
-     * @param int $end
-     *
      * @return Package[]
      */
-    public function getPackagesByDepth($start, $end = 0)
+    public function getPackagesByDepth(int $start, ?int $end = 0): array
     {
         $this->calculateDepth();
         if ($end === 0 || ($end !== null && $end < $start)) {
@@ -150,13 +140,13 @@ class YarnLock
         return array_values(
             array_filter(
                 $this->packages,
-                function (Package $package) use ($start, $end) {
+                function (Package $package) use ($start, $end): bool {
                     $depth = $package->getDepth();
                     if ($depth === null) {
                         return $end === null;
                     }
 
-                    $to = $end === null || ($depth < $end);
+                    $to = $end === null || $depth < $end;
 
                     return $depth >= $start && $to;
                 }
@@ -166,10 +156,8 @@ class YarnLock
 
     /**
      * Get the maximal dependency-tree depth.
-     *
-     * @return int
      */
-    public function getDepth()
+    public function getDepth(): int
     {
         $this->calculateDepth();
 
@@ -178,7 +166,7 @@ class YarnLock
             function ($d, Package $package) {
                 return max($d, $package->getDepth());
             },
-            0
+            0,
         );
     }
 
@@ -188,41 +176,33 @@ class YarnLock
      * If no version is given and a package is resolved with multiple versions,
      * the first one will be returned. Consider using `getPackagesByName` and
      * filter for the version that fits your needs closest.
-     *
-     * @param string $name
-     * @param string $version
-     *
-     * @return Package|null
      */
-    public function getPackage($name, $version = null)
+    public function getPackage(string $name, string $version = null): ?Package
     {
         $candidates = $this->getPackagesByName($name);
         if (count($candidates) < 1) {
             return null;
         }
+
         if ($version === null) {
             return $candidates[0];
         }
+
         foreach ($candidates as $package) {
-            if ($package->getVersion() === $version) {
-                return $package;
-            }
-            if (in_array($version, $package->getSatisfiedVersions())) {
+            if ($package->getVersion() === $version
+                || in_array($version, $package->getSatisfiedVersions())
+            ) {
                 return $package;
             }
         }
+
         return null;
     }
 
     /**
      * Checks whether a specific package is resolved in this lock file.
-     *
-     * @param string $name
-     * @param string $version
-     *
-     * @return bool
      */
-    public function hasPackage($name, $version = null)
+    public function hasPackage(string $name, ?string $version = null): bool
     {
         return $this->getPackage($name, $version) !== null;
     }
@@ -234,21 +214,23 @@ class YarnLock
      *
      * @param Package[] $root
      */
-    public function calculateDepth(array $root = null)
+    public function calculateDepth(?array $root = null): void
     {
         if ($this->depthCalculated) {
             return;
         }
+
         if ($root === null) {
             $root = array_values(
                 array_filter(
                     $this->packages,
-                    function (Package $p) {
+                    function (Package $p): bool {
                         return count($p->getResolves()) === 0;
-                    }
-                )
+                    },
+                ),
             );
         }
+
         /** @var Package $rootNode */
         foreach ($root as $rootNode) {
             $this->calculateChildDepth($rootNode, 0);
@@ -256,15 +238,12 @@ class YarnLock
         $this->depthCalculated = true;
     }
 
-    /**
-     * @param Package $node
-     * @param int $depth
-     */
-    protected function calculateChildDepth(Package $node, $depth)
+    protected function calculateChildDepth(Package $node, int $depth): void
     {
         if ($node->getDepth() !== null && $node->getDepth() <= $depth) {
             return;
         }
+
         $node->setDepth($depth);
         foreach ($node->getAllDependencies() as $dependency) {
             $this->calculateChildDepth($dependency, $depth + 1);

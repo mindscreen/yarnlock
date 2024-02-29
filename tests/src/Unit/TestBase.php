@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Mindscreen\YarnLock\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Path;
 
 class TestBase extends TestCase
 {
@@ -12,23 +15,18 @@ class TestBase extends TestCase
         return dirname(__DIR__, 3);
     }
 
-    /**
-     * @param string[] $parts
-     */
-    protected static function fixturesPath(array $parts): string
+    protected static function fixturesPath(string ...$parts): string
     {
-        array_unshift(
-            $parts,
+        return Path::join(
             static::rootDir(),
             'tests',
-            'fixtures'
+            'fixtures',
+            ...$parts,
         );
-
-        return implode(\DIRECTORY_SEPARATOR, $parts);
     }
 
     protected static function getInput(string $filePath): string
     {
-        return file_get_contents(static::fixturesPath([$filePath])) ?: '';
+        return file_get_contents(static::fixturesPath($filePath)) ?: '';
     }
 }
