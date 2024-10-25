@@ -218,20 +218,64 @@ class ParserTest extends TestBase
     }
 
     /**
-     * Scoped packages names should not be split at the first '@'
+     * The parser should split the package name and version parts
+     *
+     * Scoped packages names (prefixed with @) and Git version references should be detected properly.
+     *
+     * @param string $versionString
+     * @param array{string, string} $expectedResult
+     * @dataProvider provideVersionsForSplitting
+     * @return void
      */
-    public function testVersionSplitting()
+    public function testVersionSplitting($versionString, array $expectedResult)
     {
-        static::assertSame(
-            ['gulp-sourcemaps', '2.6.4'],
-            Parser::splitVersionString('gulp-sourcemaps@2.6.4')
-        );
-
-        static::assertSame(
-            ['@gulp-sourcemaps/identity-map', '1.X'],
-            Parser::splitVersionString('@gulp-sourcemaps/identity-map@1.X')
-        );
+        self::assertSame($expectedResult, Parser::splitVersionString($versionString));
     }
+
+    /**
+     * @return array<string, array{
+     *     versionString: string,
+     *     expectedResult: array{string, string}
+     * }>
+     */
+    public static function provideVersionsForSplitting(): array
+    {
+        return [
+            'simple package, simple version'           => [
+                'versionString'  => 'gulp-sourcemaps@2.6.4',
+                'expectedResult' => ['gulp-sourcemaps', '2.6.4'],
+            ],
+            'namespaced package, simple version'       => [
+                'versionString'  => '@gulp-sourcemaps/identity-map@1.X',
+                'expectedResult' => ['@gulp-sourcemaps/identity-map', '1.X'],
+            ],
+            'simple package, Git semver reference'     => [
+                'versionString'  => 'foo-bar@git+ssh://user@host:1234/foo/bar#semver:^1.2.3',
+                'expectedResult' => ['foo-bar', 'git+ssh://user@host:1234/foo/bar#semver:^1.2.3'],
+            ],
+            'namespaced package, Git semver reference' => [
+                'versionString'  => '@foo/bar@git+ssh://user@host:1234/foo/bar#semver:^1.2.3',
+                'expectedResult' => ['@foo/bar', 'git+ssh://user@host:1234/foo/bar#semver:^1.2.3'],
+            ],
+            'simple package, Git tag reference'        => [
+                'versionString'  => 'foo-bar@git://user@host/foo/bar.git#v1.2.3',
+                'expectedResult' => ['foo-bar', 'git://user@host/foo/bar.git#v1.2.3'],
+            ],
+            'namespaced package, Git tag reference'    => [
+                'versionString'  => '@foo/bar@git://user@host/foo/bar.git#v1.2.3',
+                'expectedResult' => ['@foo/bar', 'git://user@host/foo/bar.git#v1.2.3'],
+            ],
+            'simple package, file reference'           => [
+                'versionString'  => 'foo-bar@file:vendor/foo/bar',
+                'expectedResult' => ['foo-bar', 'file:vendor/foo/bar'],
+            ],
+            'namespaced package, file reference'       => [
+                'versionString'  => '@foo/bar@file:vendor/foo/bar',
+                'expectedResult' => ['@foo/bar', 'file:vendor/foo/bar'],
+            ],
+        ];
+    }
+
 
     /**
      * Single-value keys should not be split at spaces if they are surrounded with quotes
